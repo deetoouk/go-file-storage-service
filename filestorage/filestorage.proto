@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+option go_package = "github.com/deetoo/go-file-storage-service/filestorage";
+
+package filestorage;
+
+service FileStorage {
+    rpc Find(FindRequest) returns (stream File) {}
+    rpc Get(GetRequest) returns (File) {}
+    rpc Upload(stream UploadRequest) returns (File) {}
+    rpc Replace(stream ReplaceRequest) returns (File) {}
+    rpc Delete(DeleteRequest) returns (DeleteResponse) {}
+}
+
+message File {
+    string id = 1;
+    string name = 2;
+    string description = 3;
+    map<string, string> metadata = 4;
+    string updatedAt = 5;
+    string createdAt = 6;
+}
+
+message CreateFile {
+    string name = 2;
+    string description = 3;
+    map<string, string> metadata = 4;
+}
+
+message ReplaceFile {
+    string id = 1;
+    string name = 2;
+    string description = 3;
+    map<string, string> metadata = 4;
+}
+
+message FindRequest {
+    map<string, string> metadata = 1;
+}
+
+message GetRequest {
+    string id = 1;
+}
+
+message FileData {
+    oneof data {
+        bytes chunk = 1;
+        string content_type = 2;
+    }
+}
+
+message UploadRequest {
+    oneof upload {
+        CreateFile file = 1;
+        FileData data = 2;
+    }
+}
+
+message ReplaceRequest {
+    oneof replace {
+        ReplaceFile file = 1;
+        FileData data = 2;
+    }
+}
+
+message DeleteRequest {
+    string id = 1;
+}
+
+message DeleteResponse {
+}
