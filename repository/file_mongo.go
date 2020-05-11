@@ -87,7 +87,13 @@ func (r *MongoFileRepository) GetByID(id string, file *models.File) error {
 		return err
 	}
 
-	return r.collection.FindOne(context.Background(), bson.M{"_id": objID}).Decode(file)
+	err = r.collection.FindOne(context.Background(), bson.M{"_id": objID}).Decode(file)
+
+	if err != nil {
+		return fmt.Errorf("Document with ID: %v does not exist", id)
+	}
+
+	return nil
 }
 
 // Create creates a file and stores it in the database
