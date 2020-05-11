@@ -3,7 +3,9 @@ package repository
 import (
 	"context"
 	"crypto/md5"
+	"encoding/hex"
 	"fmt"
+	"io"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/gridfs"
@@ -166,13 +168,52 @@ func (r *MongoFileRepository) DeleteByID(id string) error {
 	return r.bucket.Delete(file.FileID)
 }
 
+// DownloadByID downloads a file by id
+func (r *MongoFileRepository) DownloadByID(id string, w io.Writer) (*FileMetadata, error) {
+	file := &models.File{}
+
+	err := r.GetByID(id, file)
+
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = r.bucket.DownloadToStream(file.FileID, w)
+
+	if err != nil {
+		return nil, err
+	}
+
+	var fileInfo struct {
+		Metadata FileMetadata `json:"metadata"`
+	}
+
+	cursor, err := r.bucket.Find(bson.M{"_id": file.FileID})
+	defer cursor.Close(context.Background())
+
+	for cursor.Next(context.Background()) {
+		cursor.Decode(&fileInfo)
+		break
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &fileInfo.Metadata, nil
+}
+
 func (r *MongoFileRepository) uploadFileAndAssociate(fd *FileData, file *models.File) error {
-	opts := options.GridFSUpload().SetMetadata(bson.D{
-		{"id", file.ID},
-		{"contentType", fd.ContentType},
-		{"md5", md5.Sum(fd.Data)},
-		{"length", len(fd.Data)},
-	})
+	md5 := md5.Sum(fd.Data)
+
+	meta := &FileMetadata{
+		ID:          file.ID,
+		ContentType: fd.ContentType,
+		MD5:         hex.EncodeToString(md5[:]),
+		Length:      len(fd.Data),
+	}
+
+	opts := options.GridFSUpload().SetMetadata(meta)
 
 	uploadStream, err := r.bucket.OpenUploadStream(
 		file.Name,

@@ -10,6 +10,7 @@ service FileStorage {
     rpc Upload(stream UploadRequest) returns (File) {}
     rpc Replace(stream ReplaceRequest) returns (File) {}
     rpc Delete(DeleteRequest) returns (DeleteResponse) {}
+    rpc Download(DownloadRequest) returns (stream DownloadResponse) {}
 }
 
 message File {
@@ -68,4 +69,12 @@ message DeleteRequest {
 }
 
 message DeleteResponse {
+}
+
+message DownloadRequest {
+    string id = 1;
+}
+
+message DownloadResponse {
+    FileData data = 1;
 }

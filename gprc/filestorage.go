@@ -227,6 +227,45 @@ func (s *FileStorageServer) Delete(ctx context.Context, r *filestorage.DeleteReq
 	return &filestorage.DeleteResponse{}, nil
 }
 
+// Download downloads a file
+func (s *FileStorageServer) Download(r *filestorage.DownloadRequest, stream filestorage.FileStorage_DownloadServer) error {
+	buf := &bytes.Buffer{}
+
+	metadata, err := s.repo.DownloadByID(r.GetId(), buf)
+
+	if err != nil {
+		return status.Error(codes.NotFound, err.Error())
+	}
+
+	stream.Send(&filestorage.DownloadResponse{
+		Data: &filestorage.FileData{
+			Data: &filestorage.FileData_ContentType{
+				ContentType: metadata.ContentType,
+			},
+		},
+	})
+
+	chunk := make([]byte, 1<<16)
+
+	for {
+		n, err := buf.Read(chunk)
+
+		if err == io.EOF {
+			break
+		}
+
+		stream.Send(&filestorage.DownloadResponse{
+			Data: &filestorage.FileData{
+				Data: &filestorage.FileData_Chunk{
+					Chunk: chunk[:n],
+				},
+			},
+		})
+	}
+
+	return nil
+}
+
 func toFile(file *filestorage.File) *models.File {
 	result := &models.File{}
 
